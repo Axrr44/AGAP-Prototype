@@ -48,6 +48,7 @@ namespace AGAP
         private bool _useSavedLayout;
         private readonly List<int> _savedCardIds = new List<int>();
         private readonly List<bool> _savedMatchedFlags = new List<bool>();
+        private readonly Dictionary<int, Color> _colorById = new Dictionary<int, Color>();
 
         #endregion
 
@@ -77,6 +78,12 @@ namespace AGAP
         #endregion
 
         #region Public Functions
+
+        public void SetLayout(int rows, int columns)
+        {
+            _rows = Mathf.Max(1, rows);
+            _columns = Mathf.Max(1, columns);
+        }
 
         public void BuildBoard()
         {
@@ -129,6 +136,9 @@ namespace AGAP
         {
             _cards.Clear();
             _cardIds.Clear();
+            _savedCardIds.Clear();
+            _savedMatchedFlags.Clear();
+            _colorById.Clear();
 
             for (int i = _boardArea.childCount - 1; i >= 0; i--)
             {
@@ -196,7 +206,11 @@ namespace AGAP
                 cardInstance.SetImmediateFaceUp(false);
 
                 if (i < _cardIds.Count)
-                    cardInstance.SetCardId(_cardIds[i]);
+                {
+                    var id = _cardIds[i];
+                    cardInstance.SetCardId(id);
+                    cardInstance.SetFrontColor(GetColorForId(id));
+                }
 
                 _cards.Add(cardInstance);
 
@@ -218,7 +232,11 @@ namespace AGAP
                 cardInstance.SetImmediateFaceUp(false);
 
                 if (i < _savedCardIds.Count)
-                    cardInstance.SetCardId(_savedCardIds[i]);
+                {
+                    var id = _savedCardIds[i];
+                    cardInstance.SetCardId(id);
+                    cardInstance.SetFrontColor(GetColorForId(id));
+                }
 
                 if (i < _savedMatchedFlags.Count && _savedMatchedFlags[i])
                 {
@@ -234,6 +252,17 @@ namespace AGAP
                     .SetEase(Ease.OutBack)
                     .SetDelay(_spawnStagger * i);
             }
+        }
+
+        private Color GetColorForId(int id)
+        {
+            if (_colorById.TryGetValue(id, out var color))
+                return color;
+
+            float h = (id * 0.161f) % 1f;
+            color = Color.HSVToRGB(h, 0.6f, 0.9f);
+            _colorById[id] = color;
+            return color;
         }
 
         #endregion

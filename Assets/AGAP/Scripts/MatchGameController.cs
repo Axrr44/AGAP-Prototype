@@ -28,6 +28,19 @@ namespace AGAP
         [SerializeField] private GameObject _gameOverPanel;
         [SerializeField] private Button _startButton;
         [SerializeField] private Button _retryButton;
+        [SerializeField] private TextMeshProUGUI _finalScoreText;
+        [SerializeField] private Slider _layoutSlider;
+        [SerializeField] private TextMeshProUGUI _layoutLabel;
+
+        [Header("Layouts")]
+        [SerializeField] private Vector2Int[] _layoutOptions =
+        {
+            new Vector2Int(2, 2),
+            new Vector2Int(2, 3),
+            new Vector2Int(3, 4),
+            new Vector2Int(4, 4),
+            new Vector2Int(5, 6)
+        };
 
         #endregion
 
@@ -70,6 +83,16 @@ namespace AGAP
                 if (_retryButton != null)
                     _retryButton.onClick.AddListener(OnRetryClicked);
 
+                if (_layoutSlider != null && _layoutOptions != null && _layoutOptions.Length > 0)
+                {
+                    _layoutSlider.wholeNumbers = true;
+                    _layoutSlider.minValue = 0;
+                    _layoutSlider.maxValue = _layoutOptions.Length - 1;
+                    _layoutSlider.value = 0;
+                    UpdateLayoutLabel(0);
+                    _layoutSlider.onValueChanged.AddListener(OnLayoutSliderChanged);
+                }
+
                 UpdateScoreText();
                 return;
             }
@@ -89,6 +112,9 @@ namespace AGAP
 
             if (_retryButton != null)
                 _retryButton.onClick.RemoveListener(OnRetryClicked);
+
+            if (_layoutSlider != null)
+                _layoutSlider.onValueChanged.RemoveListener(OnLayoutSliderChanged);
         }
 
         #endregion
@@ -100,7 +126,20 @@ namespace AGAP
             if (_startPanel != null)
                 _startPanel.SetActive(false);
 
-            StartNewOrLoad();
+            ClearSave();
+
+            var layoutIndex = 0;
+
+            if (_layoutSlider != null && _layoutOptions != null && _layoutOptions.Length > 0)
+                layoutIndex = Mathf.Clamp(Mathf.RoundToInt(_layoutSlider.value), 0, _layoutOptions.Length - 1);
+
+            var layout = _layoutOptions != null && _layoutOptions.Length > 0
+                ? _layoutOptions[layoutIndex]
+                : new Vector2Int(2, 2);
+
+            _boardController.SetLayout(layout.x, layout.y);
+            _boardController.BuildBoard();
+            ResetState();
         }
 
         private void OnRetryClicked()
@@ -111,6 +150,28 @@ namespace AGAP
             ClearSave();
             _boardController.BuildBoard();
             ResetState();
+        }
+
+        private void OnLayoutSliderChanged(float value)
+        {
+            var index = Mathf.Clamp(Mathf.RoundToInt(value), 0, _layoutOptions.Length - 1);
+            UpdateLayoutLabel(index);
+        }
+
+        private void UpdateLayoutLabel(int index)
+        {
+            if (_layoutLabel == null)
+                return;
+
+            if (_layoutOptions == null || _layoutOptions.Length == 0)
+            {
+                _layoutLabel.text = string.Empty;
+                return;
+            }
+
+            index = Mathf.Clamp(index, 0, _layoutOptions.Length - 1);
+            var layout = _layoutOptions[index];
+            _layoutLabel.text = $"Layout: {layout.x} x {layout.y}";
         }
 
         private void StartNewOrLoad()
@@ -231,7 +292,7 @@ namespace AGAP
         private void UpdateScoreText()
         {
             if (_scoreText != null)
-                _scoreText.text = $"Score: {_score}";
+                _scoreText.text = _score.ToString();
         }
 
         private void PulseScore()
@@ -258,6 +319,9 @@ namespace AGAP
             _isGameOver = true;
             PlayClip(_gameOverClip);
             ClearSave();
+
+            if (_finalScoreText != null)
+                _finalScoreText.text = $"Score: {_score}";
 
             if (_gameOverPanel != null)
                 _gameOverPanel.SetActive(true);

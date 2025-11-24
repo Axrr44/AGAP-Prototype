@@ -77,6 +77,11 @@ namespace AGAP
                 _button.interactable = !matched;
         }
 
+        public void SetFrontColor(Color color)
+        {
+            _frontSide.GetComponent<Image>().color = color;
+        }
+
         public void Flip(bool faceUp)
         {
             if (IsFaceUp == faceUp)

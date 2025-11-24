@@ -160,6 +160,7 @@ MonoBehaviour:
   _frontSide: {fileID: 4278454725196338541}
   _backSide: {fileID: 2328744835229019652}
   _button: {fileID: 1665302327329126401}
+  _frontImage: {fileID: 525529496264340467}
   _flipDuration: 0.25
 --- !u!1 &4316959443103469051
 GameObject:
