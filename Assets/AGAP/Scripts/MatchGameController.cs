@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -12,8 +11,15 @@ namespace AGAP
 
         [SerializeField] private BoardController _boardController;
         [SerializeField] private float _mismatchFlipBackDelay = 0.6f;
-        [SerializeField] private TextMeshProUGUI _scoreText;
+        [SerializeField] private Text _scoreText;
         [SerializeField] private int _matchScoreValue = 10;
+
+        [Header("Audio")]
+        [SerializeField] private AudioSource _audioSource;
+        [SerializeField] private AudioClip _flipClip;
+        [SerializeField] private AudioClip _matchClip;
+        [SerializeField] private AudioClip _mismatchClip;
+        [SerializeField] private AudioClip _gameOverClip;
 
         #endregion
 
@@ -22,6 +28,7 @@ namespace AGAP
         private readonly List<CardController> _currentPair = new List<CardController>(2);
         private readonly HashSet<CardController> _lockedCards = new HashSet<CardController>();
         private int _score;
+        private bool _isGameOver;
 
         #endregion
 
@@ -35,12 +42,15 @@ namespace AGAP
                 return;
             }
 
+            if (_audioSource == null)
+                _audioSource = GetComponent<AudioSource>();
+
             _boardController.BoardBuilt += OnBoardBuilt;
 
             if (_boardController.Cards.Count > 0)
                 SubscribeToCards();
 
-            ResetScore();
+            ResetState();
         }
 
         private void OnDestroy()
@@ -61,6 +71,12 @@ namespace AGAP
             _currentPair.Clear();
             _lockedCards.Clear();
             SubscribeToCards();
+            ResetState();
+        }
+
+        private void ResetState()
+        {
+            _isGameOver = false;
             ResetScore();
         }
 
@@ -84,6 +100,9 @@ namespace AGAP
             if (card == null)
                 return;
 
+            if (_isGameOver)
+                return;
+
             if (card.IsMatched)
                 return;
 
@@ -93,6 +112,7 @@ namespace AGAP
             if (_lockedCards.Contains(card))
                 return;
 
+            PlayClip(_flipClip);
             card.Flip(true);
             _currentPair.Add(card);
 
@@ -107,10 +127,13 @@ namespace AGAP
                 first.SetMatched(true);
                 second.SetMatched(true);
                 AddScore(_matchScoreValue);
+                PlayClip(_matchClip);
                 _currentPair.Clear();
+                CheckGameOver();
                 return;
             }
 
+            PlayClip(_mismatchClip);
             StartCoroutine(FlipBackPair(first, second));
             _currentPair.Clear();
         }
@@ -147,7 +170,30 @@ namespace AGAP
         private void UpdateScoreText()
         {
             if (_scoreText != null)
-                _scoreText.text = _score.ToString();
+                _scoreText.text = $"Score: {_score}";
+        }
+
+        private void CheckGameOver()
+        {
+            foreach (var card in _boardController.Cards)
+            {
+                if (!card.IsMatched)
+                    return;
+            }
+
+            _isGameOver = true;
+            PlayClip(_gameOverClip);
+        }
+
+        private void PlayClip(AudioClip clip)
+        {
+            if (_audioSource == null)
+                return;
+
+            if (clip == null)
+                return;
+
+            _audioSource.PlayOneShot(clip);
         }
 
         #endregion
