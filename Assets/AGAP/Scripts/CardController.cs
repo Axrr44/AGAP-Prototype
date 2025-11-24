@@ -8,49 +8,75 @@ namespace AGAP
     public class CardController : MonoBehaviour
     {
         #region Serialized Fields
+
         [Header("References")]
         [SerializeField] private RectTransform _frontSide;
         [SerializeField] private RectTransform _backSide;
-        [SerializeField] private Button _mainButton;
+        [SerializeField] private Button _button;
+
         [Header("Flip Settings")]
         [SerializeField] private float _flipDuration = 0.25f;
+
         #endregion
 
         #region Public Fields
+
+        public int CardId { get; private set; }
         public bool IsFaceUp { get; private set; }
+        public bool IsMatched { get; private set; }
+
         #endregion
-        
+
         #region Events and Delegates
+
         public event Action<CardController> Clicked;
+
         #endregion
 
         #region Private Fields
+
         private Tween _flipTween;
+
         #endregion
 
         #region Unity Functions
+
         private void Awake()
         {
-            if (_mainButton == null)
-                _mainButton = GetComponent<Button>();
+            if (_button == null)
+                _button = GetComponent<Button>();
 
             SetImmediateFaceUp(false);
 
-            if (_mainButton != null)
-                _mainButton.onClick.AddListener(OnCardClicked);
+            if (_button != null)
+                _button.onClick.AddListener(OnCardClicked);
         }
 
         private void OnDestroy()
         {
-            if (_mainButton != null)
-                _mainButton.onClick.RemoveListener(OnCardClicked);
+            if (_button != null)
+                _button.onClick.RemoveListener(OnCardClicked);
 
             _flipTween?.Kill();
         }
+
         #endregion
 
         #region Public Functions
-       
+
+        public void SetCardId(int id)
+        {
+            CardId = id;
+        }
+
+        public void SetMatched(bool matched)
+        {
+            IsMatched = matched;
+
+            if (_button != null)
+                _button.interactable = !matched;
+        }
+
         public void Flip(bool faceUp)
         {
             if (IsFaceUp == faceUp)
@@ -60,7 +86,7 @@ namespace AGAP
 
             _flipTween?.Kill();
 
-            RectTransform rect = (RectTransform)transform;
+            var rect = (RectTransform)transform;
 
             _flipTween = rect.DOScaleX(0f, _flipDuration * 0.5f)
                 .SetEase(Ease.InQuad)
@@ -81,9 +107,10 @@ namespace AGAP
             _flipTween?.Kill();
             ApplyFaceVisibility(faceUp);
 
-            RectTransform rect = (RectTransform)transform;
+            var rect = (RectTransform)transform;
             rect.localScale = Vector3.one;
         }
+
         #endregion
 
         #region Private Functions
