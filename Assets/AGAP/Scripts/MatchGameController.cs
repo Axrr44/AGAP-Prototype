@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace AGAP
 {
@@ -10,6 +12,8 @@ namespace AGAP
 
         [SerializeField] private BoardController _boardController;
         [SerializeField] private float _mismatchFlipBackDelay = 0.6f;
+        [SerializeField] private TextMeshProUGUI _scoreText;
+        [SerializeField] private int _matchScoreValue = 10;
 
         #endregion
 
@@ -17,6 +21,7 @@ namespace AGAP
 
         private readonly List<CardController> _currentPair = new List<CardController>(2);
         private readonly HashSet<CardController> _lockedCards = new HashSet<CardController>();
+        private int _score;
 
         #endregion
 
@@ -34,6 +39,8 @@ namespace AGAP
 
             if (_boardController.Cards.Count > 0)
                 SubscribeToCards();
+
+            ResetScore();
         }
 
         private void OnDestroy()
@@ -54,6 +61,7 @@ namespace AGAP
             _currentPair.Clear();
             _lockedCards.Clear();
             SubscribeToCards();
+            ResetScore();
         }
 
         private void SubscribeToCards()
@@ -98,6 +106,7 @@ namespace AGAP
             {
                 first.SetMatched(true);
                 second.SetMatched(true);
+                AddScore(_matchScoreValue);
                 _currentPair.Clear();
                 return;
             }
@@ -121,6 +130,24 @@ namespace AGAP
 
             _lockedCards.Remove(first);
             _lockedCards.Remove(second);
+        }
+
+        private void ResetScore()
+        {
+            _score = 0;
+            UpdateScoreText();
+        }
+
+        private void AddScore(int value)
+        {
+            _score += value;
+            UpdateScoreText();
+        }
+
+        private void UpdateScoreText()
+        {
+            if (_scoreText != null)
+                _scoreText.text = _score.ToString();
         }
 
         #endregion
