@@ -8,33 +8,46 @@ namespace AGAP
     public class BoardController : MonoBehaviour
     {
         #region Serialized Fields
+
         [Header("Board Settings")]
         [SerializeField] private RectTransform _boardArea;
         [SerializeField] private GridLayoutGroup _gridLayout;
         [SerializeField] private CardController _cardPrefab;
+
         [Header("Layout")]
         [SerializeField] private int _rows = 2;
         [SerializeField] private int _columns = 2;
         [SerializeField] private Vector2 _spacing = new Vector2(10f, 10f);
         [SerializeField] private Vector2 _padding = new Vector2(20f, 20f);
+
         #endregion
 
         #region Public Fields
+
         public int Rows => _rows;
         public int Columns => _columns;
         public IReadOnlyList<CardController> Cards => _cards;
+
         #endregion
 
         #region Events and Delegates
+
         public event Action BoardBuilt;
+
         #endregion
 
         #region Private Fields
+
         private readonly List<CardController> _cards = new List<CardController>();
         private readonly List<int> _cardIds = new List<int>();
+        private bool _useSavedLayout;
+        private readonly List<int> _savedCardIds = new List<int>();
+        private readonly List<bool> _savedMatchedFlags = new List<bool>();
+
         #endregion
 
         #region Unity Functions
+
         private void Reset()
         {
             if (_boardArea == null)
@@ -43,6 +56,7 @@ namespace AGAP
             if (_gridLayout == null)
                 _gridLayout = GetComponent<GridLayoutGroup>();
         }
+
         private void Awake()
         {
             if (_boardArea == null)
@@ -54,10 +68,7 @@ namespace AGAP
             if (_cardPrefab == null)
                 Debug.LogWarning("[BoardController] Card prefab is not assigned.", this);
         }
-        private void Start()
-        {
-            BuildBoard();
-        }
+
         #endregion
 
         #region Public Functions
@@ -72,11 +83,39 @@ namespace AGAP
 
             ClearExistingCards();
             ConfigureLayout();
-            PrepareCardIds();
-            SpawnCards();
+
+            if (_useSavedLayout)
+            {
+                SpawnCardsFromSaved();
+                _useSavedLayout = false;
+            }
+            else
+            {
+                PrepareCardIds();
+                SpawnCards();
+            }
 
             BoardBuilt?.Invoke();
         }
+
+        public void BuildBoardFromSave(int rows, int columns, IList<int> cardIds, IList<bool> matchedFlags)
+        {
+            _rows = rows;
+            _columns = columns;
+
+            _savedCardIds.Clear();
+            _savedMatchedFlags.Clear();
+
+            if (cardIds != null)
+                _savedCardIds.AddRange(cardIds);
+
+            if (matchedFlags != null)
+                _savedMatchedFlags.AddRange(matchedFlags);
+
+            _useSavedLayout = true;
+            BuildBoard();
+        }
+
         #endregion
 
         #region Private Functions
@@ -133,9 +172,7 @@ namespace AGAP
             }
 
             if (_cardIds.Count < totalCards)
-            {
                 _cardIds.Add(pairCount);
-            }
 
             for (int i = 0; i < _cardIds.Count; i++)
             {
@@ -159,6 +196,29 @@ namespace AGAP
                 _cards.Add(cardInstance);
             }
         }
+
+        private void SpawnCardsFromSaved()
+        {
+            var totalCards = _rows * _columns;
+
+            for (int i = 0; i < totalCards; i++)
+            {
+                var cardInstance = Instantiate(_cardPrefab, _boardArea);
+                cardInstance.SetImmediateFaceUp(false);
+
+                if (i < _savedCardIds.Count)
+                    cardInstance.SetCardId(_savedCardIds[i]);
+
+                if (i < _savedMatchedFlags.Count && _savedMatchedFlags[i])
+                {
+                    cardInstance.SetMatched(true);
+                    cardInstance.SetImmediateFaceUp(true);
+                }
+
+                _cards.Add(cardInstance);
+            }
+        }
+
         #endregion
     }
 }

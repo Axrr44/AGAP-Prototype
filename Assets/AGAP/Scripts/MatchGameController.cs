@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace AGAP
 {
@@ -11,7 +11,7 @@ namespace AGAP
 
         [SerializeField] private BoardController _boardController;
         [SerializeField] private float _mismatchFlipBackDelay = 0.6f;
-        [SerializeField] private Text _scoreText;
+        [SerializeField] private TextMeshProUGUI _scoreText;
         [SerializeField] private int _matchScoreValue = 10;
 
         [Header("Audio")]
@@ -30,6 +30,8 @@ namespace AGAP
         private int _score;
         private bool _isGameOver;
 
+        private const string SaveKey = "AGAP_MATCH_SAVE";
+
         #endregion
 
         #region Unity Functions
@@ -47,10 +49,11 @@ namespace AGAP
 
             _boardController.BoardBuilt += OnBoardBuilt;
 
-            if (_boardController.Cards.Count > 0)
-                SubscribeToCards();
-
-            ResetState();
+            if (!TryLoadGame())
+            {
+                _boardController.BuildBoard();
+                ResetState();
+            }
         }
 
         private void OnDestroy()
@@ -71,13 +74,15 @@ namespace AGAP
             _currentPair.Clear();
             _lockedCards.Clear();
             SubscribeToCards();
-            ResetState();
+            UpdateScoreText();
         }
 
         private void ResetState()
         {
             _isGameOver = false;
-            ResetScore();
+            _score = 0;
+            UpdateScoreText();
+            SaveGame();
         }
 
         private void SubscribeToCards()
@@ -117,7 +122,10 @@ namespace AGAP
             _currentPair.Add(card);
 
             if (_currentPair.Count < 2)
+            {
+                SaveGame();
                 return;
+            }
 
             var first = _currentPair[0];
             var second = _currentPair[1];
@@ -130,12 +138,14 @@ namespace AGAP
                 PlayClip(_matchClip);
                 _currentPair.Clear();
                 CheckGameOver();
+                SaveGame();
                 return;
             }
 
             PlayClip(_mismatchClip);
             StartCoroutine(FlipBackPair(first, second));
             _currentPair.Clear();
+            SaveGame();
         }
 
         private IEnumerator FlipBackPair(CardController first, CardController second)
@@ -153,12 +163,8 @@ namespace AGAP
 
             _lockedCards.Remove(first);
             _lockedCards.Remove(second);
-        }
 
-        private void ResetScore()
-        {
-            _score = 0;
-            UpdateScoreText();
+            SaveGame();
         }
 
         private void AddScore(int value)
@@ -183,6 +189,7 @@ namespace AGAP
 
             _isGameOver = true;
             PlayClip(_gameOverClip);
+            ClearSave();
         }
 
         private void PlayClip(AudioClip clip)
@@ -194,6 +201,89 @@ namespace AGAP
                 return;
 
             _audioSource.PlayOneShot(clip);
+        }
+
+        private void SaveGame()
+        {
+            if (_boardController == null || _boardController.Cards == null || _boardController.Cards.Count == 0)
+                return;
+
+            var data = new MatchGameSaveData
+            {
+                rows = _boardController.Rows,
+                columns = _boardController.Columns,
+                score = _score
+            };
+
+            int count = _boardController.Cards.Count;
+            data.cardIds = new int[count];
+            data.matchedFlags = new bool[count];
+
+            for (int i = 0; i < count; i++)
+            {
+                var card = _boardController.Cards[i];
+                data.cardIds[i] = card.CardId;
+                data.matchedFlags[i] = card.IsMatched;
+            }
+
+            var json = JsonUtility.ToJson(data);
+            PlayerPrefs.SetString(SaveKey, json);
+            PlayerPrefs.Save();
+        }
+
+        private bool TryLoadGame()
+        {
+            if (!PlayerPrefs.HasKey(SaveKey))
+                return false;
+
+            var json = PlayerPrefs.GetString(SaveKey);
+            if (string.IsNullOrEmpty(json))
+                return false;
+
+            MatchGameSaveData data;
+
+            try
+            {
+                data = JsonUtility.FromJson<MatchGameSaveData>(json);
+            }
+            catch
+            {
+                return false;
+            }
+
+            if (data == null)
+                return false;
+
+            if (data.rows <= 0 || data.columns <= 0)
+                return false;
+
+            if (data.cardIds == null || data.matchedFlags == null)
+                return false;
+
+            if (data.cardIds.Length != data.matchedFlags.Length)
+                return false;
+
+            _score = data.score;
+            _isGameOver = false;
+
+            _boardController.BuildBoardFromSave(
+                data.rows,
+                data.columns,
+                data.cardIds,
+                data.matchedFlags
+            );
+
+            UpdateScoreText();
+            return true;
+        }
+
+        private void ClearSave()
+        {
+            if (!PlayerPrefs.HasKey(SaveKey))
+                return;
+
+            PlayerPrefs.DeleteKey(SaveKey);
+            PlayerPrefs.Save();
         }
 
         #endregion
