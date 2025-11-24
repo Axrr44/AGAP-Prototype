@@ -1,7 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
+using DG.Tweening;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace AGAP
 {
@@ -21,6 +23,12 @@ namespace AGAP
         [SerializeField] private AudioClip _mismatchClip;
         [SerializeField] private AudioClip _gameOverClip;
 
+        [Header("UI")]
+        [SerializeField] private GameObject _startPanel;
+        [SerializeField] private GameObject _gameOverPanel;
+        [SerializeField] private Button _startButton;
+        [SerializeField] private Button _retryButton;
+
         #endregion
 
         #region Private Fields
@@ -29,6 +37,7 @@ namespace AGAP
         private readonly HashSet<CardController> _lockedCards = new HashSet<CardController>();
         private int _score;
         private bool _isGameOver;
+        private Tween _scoreTween;
 
         private const string SaveKey = "AGAP_MATCH_SAVE";
 
@@ -49,11 +58,23 @@ namespace AGAP
 
             _boardController.BoardBuilt += OnBoardBuilt;
 
-            if (!TryLoadGame())
+            if (_startPanel != null && _startButton != null)
             {
-                _boardController.BuildBoard();
-                ResetState();
+                _startPanel.SetActive(true);
+
+                if (_gameOverPanel != null)
+                    _gameOverPanel.SetActive(false);
+
+                _startButton.onClick.AddListener(OnStartClicked);
+
+                if (_retryButton != null)
+                    _retryButton.onClick.AddListener(OnRetryClicked);
+
+                UpdateScoreText();
+                return;
             }
+
+            StartNewOrLoad();
         }
 
         private void OnDestroy()
@@ -62,11 +83,44 @@ namespace AGAP
                 _boardController.BoardBuilt -= OnBoardBuilt;
 
             UnsubscribeFromCards();
+
+            if (_startButton != null)
+                _startButton.onClick.RemoveListener(OnStartClicked);
+
+            if (_retryButton != null)
+                _retryButton.onClick.RemoveListener(OnRetryClicked);
         }
 
         #endregion
 
         #region Private Functions
+
+        private void OnStartClicked()
+        {
+            if (_startPanel != null)
+                _startPanel.SetActive(false);
+
+            StartNewOrLoad();
+        }
+
+        private void OnRetryClicked()
+        {
+            if (_gameOverPanel != null)
+                _gameOverPanel.SetActive(false);
+
+            ClearSave();
+            _boardController.BuildBoard();
+            ResetState();
+        }
+
+        private void StartNewOrLoad()
+        {
+            if (!TryLoadGame())
+            {
+                _boardController.BuildBoard();
+                ResetState();
+            }
+        }
 
         private void OnBoardBuilt()
         {
@@ -171,12 +225,26 @@ namespace AGAP
         {
             _score += value;
             UpdateScoreText();
+            PulseScore();
         }
 
         private void UpdateScoreText()
         {
             if (_scoreText != null)
                 _scoreText.text = $"Score: {_score}";
+        }
+
+        private void PulseScore()
+        {
+            if (_scoreText == null)
+                return;
+
+            _scoreTween?.Kill();
+
+            var rect = _scoreText.rectTransform;
+            rect.localScale = Vector3.one;
+
+            _scoreTween = rect.DOPunchScale(new Vector3(0.2f, 0.2f, 0f), 0.2f, 1);
         }
 
         private void CheckGameOver()
@@ -190,6 +258,9 @@ namespace AGAP
             _isGameOver = true;
             PlayClip(_gameOverClip);
             ClearSave();
+
+            if (_gameOverPanel != null)
+                _gameOverPanel.SetActive(true);
         }
 
         private void PlayClip(AudioClip clip)

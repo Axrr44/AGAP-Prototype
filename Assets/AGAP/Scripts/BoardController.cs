@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -19,6 +20,10 @@ namespace AGAP
         [SerializeField] private int _columns = 2;
         [SerializeField] private Vector2 _spacing = new Vector2(10f, 10f);
         [SerializeField] private Vector2 _padding = new Vector2(20f, 20f);
+
+        [Header("Animation")]
+        [SerializeField] private float _spawnDuration = 0.25f;
+        [SerializeField] private float _spawnStagger = 0.03f;
 
         #endregion
 
@@ -194,6 +199,12 @@ namespace AGAP
                     cardInstance.SetCardId(_cardIds[i]);
 
                 _cards.Add(cardInstance);
+
+                var rect = (RectTransform)cardInstance.transform;
+                rect.localScale = Vector3.zero;
+                rect.DOScale(Vector3.one, _spawnDuration)
+                    .SetEase(Ease.OutBack)
+                    .SetDelay(_spawnStagger * i);
             }
         }
 
@@ -216,6 +227,12 @@ namespace AGAP
                 }
 
                 _cards.Add(cardInstance);
+
+                var rect = (RectTransform)cardInstance.transform;
+                rect.localScale = Vector3.zero;
+                rect.DOScale(Vector3.one, _spawnDuration)
+                    .SetEase(Ease.OutBack)
+                    .SetDelay(_spawnStagger * i);
             }
         }
 
